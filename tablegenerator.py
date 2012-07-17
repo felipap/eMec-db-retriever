@@ -13,7 +13,7 @@ from dataparser import DataParser
 import sys
 
 # year ranges to iterate through
-ANOS_FHC = [] #range(1995, 2003)
+ANOS_FHC = range(1995, 2003)
 ANOS_LULA = range(2003, 2011)
 
 # SELECT and WHERE fields
