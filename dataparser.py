@@ -154,7 +154,7 @@ class DataParser(object):
 		return new_dict
 
 	@staticmethod
-	def filter(entries, table, keyindex=1, autofill=False):
+	def filter(entries, table, keyindex=1, autofill=False, row_size=2):
 		""" Replace and filter matching keys according to table.
 
 		this takes a key_index and tries to match the [keyindex] element in a row,
@@ -192,15 +192,31 @@ class DataParser(object):
 		n = []
 		if autofill:
 			
-			# if autofill, get items that are in the translation table
-			# but not in the entries, and insert an data-empty row in 
-			# the returning list of length keyindex+1, with the last
-			# element being the not found item and 0 as the remaining.
+			# if autofill, get items that are in the translation table but not in
+			# the entries, and insert an data-empty row in the returning list of
+			# length keyindex+1, with the last element being the not found item and
+			# 0 as the remaining.
 
 			for item in table:
-				# if item is not in entries
+				# if key item is not in any entry
 				if not item in [e[keyindex] for e in entries]:
-					l = [0]*max(len(e) for e in entries)
+		
+					if entries:
+						# if entries is not [], l will have the same length as the
+						# lengthiest row within entries. taking the smallest row's
+						# length would probably work just as well. why, after all,
+						# would two entries have different lengths?
+						l = [autofill]*max(len(e) for e in entries)
+					else:
+						# if entries is empty, build rows of size 'row_size'.
+						if not row_size:
+							# if variable is null, build rows of size keyindex+1.
+							row_size = keyindex+1
+						# the row_size variable must be passed in those table
+						# generators that fail with entries of size keyindex+1!
+						# (dahh)
+						l = [autofill]*row_size
+
 					l[keyindex] = table[item]
 					n.append(l)
 
@@ -212,7 +228,3 @@ class DataParser(object):
 
 		# sort based on keyindex. this is crucial!
 		return sorted(n, key = lambda row: row[keyindex])
-
-	@staticmethod
-	def row_to_excel(data):
-		return '\t'.join(map(repr, data))

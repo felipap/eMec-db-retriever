@@ -13,7 +13,7 @@ from dataparser import DataParser
 import sys
 
 # year ranges to iterate through
-ANOS_FHC = range(1995, 2003)
+ANOS_FHC = [] #range(1995, 2003)
 ANOS_LULA = range(2003, 2011)
 
 # SELECT and WHERE fields
@@ -26,8 +26,9 @@ NAT_JURIDICA_PUBLICA = ('municipal', 'estadual', 'federal')
 parse_turno = DataParser.parse_turno
 row_to_dict = DataParser.row_to_dict
 filter = DataParser.filter
-row_to_excel = DataParser.row_to_excel
 
+
+# auxiliary functions, to display cute messages
 def _getWindowWidth():
 	""" Return window width or fail (return None). """
 
@@ -35,7 +36,7 @@ def _getWindowWidth():
 	import idlelib
 	import sys
 
-	if 'idlelib.run' in sys.modules:
+	if _IN_IDLE:
 		# running in idle, no way to know width
 		return None
 
@@ -61,33 +62,35 @@ def _getWindowWidth():
 
 	# last hope failed :(
 	return None
+
 def color(message, *config):
 	""" Print a message colored, given the configuration wanted. """
-
-	C = {
-		'HEADER': '\033[95m',
-		'OKBLUE': '\033[94m',
-		'OKGREEN': '\033[92m',
-		'WARNING': '\033[93m',
-		'FAIL': '\033[91m',
-		'BOLD': '\033[1m',
-		'NICEBLUE': '\033[36m',
-		"GLOW": "\033[32m",
-	}
-
+	C = { 'HEADER': '\033[95m'
+		, 'OKBLUE': '\033[94m'
+		, 'OKGREEN': '\033[92m'
+		, 'WARNING': '\033[93m'
+		, 'FAIL': '\033[91m'
+		, 'BOLD': '\033[1m'
+		, 'NICEBLUE': '\033[36m'
+		, "GLOW": "\033[32m" }
+	
+	if _IN_IDLE:
+		# unix coloring doesn't work in idle
+		return message
+	
 	ENDC = '\033[0m'
 	sets = ' '.join(C[e] for e in config)
 	return '%s%s%s' % (sets, message, ENDC)
 
 def _centralize_msg(msg):
 	""" Centralize message on the screen. """
-
-	if len(msg) > WIDTH:
+	if _IN_IDLE or len(msg) > WIDTH:
 		return msg
-
 	spaces = ' ' * ((WIDTH-len(msg))/2)
 	return spaces + msg + spaces
+##
 
+_IN_IDLE = bool('idlelib.run' in sys.modules)
 WIDTH = _getWindowWidth() or 80
 
 class TableGenerator(object):
@@ -180,11 +183,11 @@ class TableGenerator(object):
 
 			for year in ANOS_FHC+ANOS_LULA:
 				cursor.execute(mquery(year, mod_ensino))
-				fetched_data = DataParser.filter(cursor.fetchall(), {
+				fetched_data = filter(cursor.fetchall(), {
 					"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Municipal": "Municipal",
 					"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Estadual": "Estadual",
 					"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Federal": "Federal"
-				}, autofill='0')
+				}, autofill='0', default_size=3)
 				yield [year] + [e[0] for e in fetched_data]
 				
 			print color("last fetched: %s" %  fetched_data, 'NICEBLUE'), '\n'
@@ -220,18 +223,18 @@ class TableGenerator(object):
 			for year in ANOS_FHC+ANOS_LULA:
 				fetched_data = []
 				cursor.execute(mquery(year, mod_ensino))
-				fetched_data += DataParser.filter(cursor.fetchall(), {
+				fetched_data += filter(cursor.fetchall(), {
 					"Centro Federal de Educa\xc3\xa7\xc3\xa3o Tecnol\xc3\xb3gica": "CEFET",
 					"Instituto Federal de Educa\xc3\xa7\xc3\xa3o, Ci\xc3\xaancia e Tecnologia": "IFET",
 				}, autofill='0')
 
 				cursor.execute(mquery2(year, mod_ensino))
-				fetched_data += DataParser.filter(cursor.fetchall(), {
+				fetched_data += filter(cursor.fetchall(), {
 					'Universidade': 'UF',
 				}, autofill='0')
 				
 				cursor.execute(mquery3(year, mod_ensino))
-				fetched_data += DataParser.filter(cursor.fetchall(), {
+				fetched_data += filter(cursor.fetchall(), {
 					'Universidade': 'UTF'
 				}, autofill='0')
 				yield [year] + fetched_data
@@ -275,18 +278,18 @@ class TableGenerator(object):
 				for year in ANOS_FHC+ANOS_LULA:
 					fetched_data = []
 					cursor.execute(mquery(year, regiao, mod_ensino))
-					fetched_data += DataParser.filter(cursor.fetchall(), {
+					fetched_data += filter(cursor.fetchall(), {
 						"Centro Federal de Educa\xc3\xa7\xc3\xa3o Tecnol\xc3\xb3gica": "CEFET",
 						"Instituto Federal de Educa\xc3\xa7\xc3\xa3o, Ci\xc3\xaancia e Tecnologia": "IFET",
 					}, autofill='0')
 					
 					cursor.execute(mquery2(year, regiao, mod_ensino))
-					fetched_data += DataParser.filter(cursor.fetchall(), {
+					fetched_data += filter(cursor.fetchall(), {
 						'Universidade': 'UF',
 					}, autofill='0')
 
 					cursor.execute(mquery3(year, regiao, mod_ensino))
-					fetched_data += DataParser.filter(cursor.fetchall(), {
+					fetched_data += filter(cursor.fetchall(), {
 						'Universidade': 'UTF'
 					}, autofill='0')
 					yield [e[0] for e in fetched_data]
@@ -310,10 +313,10 @@ class TableGenerator(object):
 
 			for year in ANOS_FHC+ANOS_LULA:
 				cursor.execute(mquery(year, cat_ensino))                
-				fetched_data = DataParser.parse_turno(cursor.fetchall()).items()
+				fetched_data = parse_turno(cursor.fetchall()).items()
 				fetched_data = [(b,a) for a,b in fetched_data]
 
-				fetched_data = DataParser.filter(fetched_data, {
+				fetched_data = filter(fetched_data, {
 					u'Vespertino':'Vespertino',
 					u'Matutino': 'Matutino',
 					u'Noturno': 'Noturno',
@@ -337,8 +340,8 @@ class TableGenerator(object):
 	
 		for year in ANOS_FHC+ANOS_LULA:
 			cursor.execute(mquery(year))
-			fetched_data = DataParser.parse_turno(cursor.fetchall()).items()
-			fetched_data = DataParser.filter(fetched_data, {
+			fetched_data = parse_turno(cursor.fetchall()).items()
+			fetched_data = filter(fetched_data, {
 				"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Municipal": "Municipal",
 				"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Estadual": "Estadual",
 				"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Federal": "Federal"
@@ -375,22 +378,22 @@ class TableGenerator(object):
 			fetched_data = []
 
 			cursor.execute(mquery(year))
-			fetched_data += DataParser.filter(cursor.fetchall(), {
+			fetched_data += filter(cursor.fetchall(), {
 				"Centro Federal de Educa\xc3\xa7\xc3\xa3o Tecnol\xc3\xb3gica": "CEFET",
 				"Instituto Federal de Educa\xc3\xa7\xc3\xa3o, Ci\xc3\xaancia e Tecnologia": "IFET",
 			}, keyindex=2)
 
 			cursor.execute(mquery2(year))
-			fetched_data += DataParser.filter(cursor.fetchall(), {
+			fetched_data += filter(cursor.fetchall(), {
 				'Universidade': 'UF',
 			}, keyindex=2)
 
 			cursor.execute(mquery3(year))
-			fetched_data += DataParser.filter(cursor.fetchall(), {
+			fetched_data += filter(cursor.fetchall(), {
 				'Universidade': 'UTF'
 			}, keyindex=2)
 
-			fetched_data = DataParser.parse_turno(fetched_data)
+			fetched_data = parse_turno(fetched_data)
 			
 			yield fetched_data.items()
 		
@@ -435,7 +438,7 @@ class TableGenerator(object):
 
 			for year in ANOS_FHC+ANOS_LULA:
 				cursor.execute(mquery(year, tit))
-				fetched_data = DataParser.filter(cursor.fetchall(), {
+				fetched_data = filter(cursor.fetchall(), {
 					"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Municipal": "Municipal",
 					"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Estadual": "Estadual",
 					"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Federal": "Federal"
@@ -477,17 +480,17 @@ class TableGenerator(object):
 			for year in ANOS_FHC+ANOS_LULA:
 				fetched_data = []
 				cursor.execute(mquery(year, tit))
-				fetched_data += DataParser.filter(cursor.fetchall(), {
+				fetched_data += filter(cursor.fetchall(), {
 					"Centro Federal de Educa\xc3\xa7\xc3\xa3o Tecnol\xc3\xb3gica": "CEFET",
 					"Instituto Federal de Educa\xc3\xa7\xc3\xa3o, Ci\xc3\xaancia e Tecnologia": "IFET",
 				}, autofill='0')
 				cursor.execute(mquery2(year, tit))
-				fetched_data += DataParser.filter(cursor.fetchall(), {
+				fetched_data += filter(cursor.fetchall(), {
 					'Universidade': 'UF'
 				}, autofill='0')
 
 				cursor.execute(mquery3(year, tit))
-				fetched_data += DataParser.filter(cursor.fetchall(), {
+				fetched_data += filter(cursor.fetchall(), {
 					'Universidade': 'UTF'
 				}, autofill='0')
 				yield [year] + [e[0] for e in fetched_data]
@@ -511,9 +514,9 @@ class TableGenerator(object):
 			
 			for year in ANOS_FHC+ANOS_LULA:
 				cursor.execute(mquery(year, tit))           
-				fetched_data = DataParser.parse_turno(cursor.fetchall()).items()
+				fetched_data = parse_turno(cursor.fetchall()).items()
 				fetched_data = [(b,a) for a,b in fetched_data]
-				fetched_data = DataParser.filter(fetched_data, {
+				fetched_data = filter(fetched_data, {
 					u'Vespertino':'Vespertino',
 					u'Matutino': 'Matutino',
 					u'Noturno': 'Noturno',
@@ -541,9 +544,9 @@ class TableGenerator(object):
 
 			for year in ANOS_FHC+ANOS_LULA:
 				cursor.execute(mquery(year, tit))           
-				fetched_data = DataParser.parse_turno(cursor.fetchall()).items()
+				fetched_data = parse_turno(cursor.fetchall()).items()
 				fetched_data = [(b,a) for a,b in fetched_data]
-				fetched_data = DataParser.filter(fetched_data, {
+				fetched_data = filter(fetched_data, {
 					u'Vespertino':'Vespertino',
 					u'Matutino': 'Matutino',
 					u'Noturno': 'Noturno',
@@ -574,10 +577,10 @@ class TableGenerator(object):
 
 				for year in ANOS_FHC+ANOS_LULA:
 					cursor.execute(mquery(year, nat_jur_pub, tit))
-					fetched_data = DataParser.parse_turno(cursor.fetchall()).items()
+					fetched_data = parse_turno(cursor.fetchall()).items()
 					fetched_data = [(b,a) for a,b in fetched_data]
 
-					fetched_data = DataParser.filter(fetched_data, {
+					fetched_data = filter(fetched_data, {
 						u'Vespertino':'Vespertino',
 						u'Matutino': 'Matutino',
 						u'Noturno': 'Noturno',
@@ -624,19 +627,19 @@ class TableGenerator(object):
 				for year in ANOS_FHC+ANOS_LULA:
 					fetched_data = []
 					cursor.execute(mquery(year, tit))
-					fetched_data += DataParser.filter(cursor.fetchall(), {
+					fetched_data += filter(cursor.fetchall(), {
 						"Centro Federal de Educa\xc3\xa7\xc3\xa3o Tecnol\xc3\xb3gica": "CEFET",
 						"Instituto Federal de Educa\xc3\xa7\xc3\xa3o, Ci\xc3\xaancia e Tecnologia": "IFET",
 					}, autofill='0')
 
 					cursor.execute(mquery2(year, tit))
-					fetched_data += DataParser.filter(cursor.fetchall(), { 'Universidade': 'UF' }, autofill='0')
+					fetched_data += filter(cursor.fetchall(), { 'Universidade': 'UF' }, autofill='0')
 					cursor.execute(mquery3(year, tit))
-					fetched_data += DataParser.filter(cursor.fetchall(), { 'Universidade': 'UTF' }, autofill='0')
+					fetched_data += filter(cursor.fetchall(), { 'Universidade': 'UTF' }, autofill='0')
 
-					# reorganize tuples to DataParser.parse_turno() style
+					# reorganize tuples to parse_turno() style
 					fetched_data = [(a, str(c), str(b)) for (a, b, c) in fetched_data]
-					fetched_data = DataParser.parse_turno(fetched_data)
+					fetched_data = parse_turno(fetched_data)
 
 					yield [year] + fetched_data.items()
 					

@@ -18,34 +18,38 @@ from tablegenerator import TableGenerator
 import psycopg2.extras
 import sys
 
+CONFIG_FILE = 'dbconfig.json'
+
 __all__ = ['tablegenerator', 'dataparser', 'queryassembler']
 
-def connect_database(config_file = 'dbconfig.json'):
-	""" Return the database cursor.
+def connect_database(config_file = CONFIG_FILE):
+    """ Return the database cursor.
 
-	This function reads the configuration json file, estabilishes
-	the connection to the database and returns a db cursor.
-	
-	"""
-	import json
+    This function reads the configuration json file, estabilishes
+    the connection to the database and returns a db cursor.
+    
+    """
+    import json
 
-	with open(config_file) as f:
-		data = json.load(f)
+    with open(config_file) as f:
+        data = json.load(f)
 
-	conn = psycopg2.connect(dbname=data['dbname'], user=data['user'], password=data['password'], host=data['host'])
-	conn.set_client_encoding('UTF8') # important for the non-ASCII characters
-	print "database is now connected. retrieving cursor."
-	return conn.cursor()
+    conn = psycopg2.connect(dbname=data['dbname'], user=data['user'], password=data['password'], host=data['host'])
+    conn.set_client_encoding('UTF8')
+    print "database is now connected. retrieving cursor."
+    return conn.cursor()
 
 def display_data(datum):
-	for data in datum:
-	 	print '\t'.join(map(str, data))
+    for data in datum:
+        print '\t'.join(map(str, data))
+
 
 if __name__ == "__main__":
-	cursor = connect_database()
+    cursor = connect_database()
 
-	tg = TableGenerator(cursor)
-	
-	for i in range(1, len(sys.argv)) or '7':
-		display_data(getattr(tg, 'table%s' % sys.argv[i])())
-	
+    tg = TableGenerator(cursor)
+    
+    for i in range(1, len(sys.argv)):
+        display_data(getattr(tg, 'table%s' % sys.argv[i])())
+    display_data(tg.table5_6())
+    
