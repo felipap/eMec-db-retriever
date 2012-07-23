@@ -320,7 +320,7 @@ class TableGenerator(object):
 					u'Vespertino':'Vespertino',
 					u'Matutino': 'Matutino',
 					u'Noturno': 'Noturno',
-					u'N\xe3o aplica': 'Nao se aplica',
+					u'N\xe3o aplica': 'Não aplica',
 					u'Integral': 'Integral',
 				}, autofill='0')
 				yield [e[0] for e in fetched_data]
@@ -417,7 +417,7 @@ class TableGenerator(object):
 				for year in ANOS_FHC+ANOS_LULA:
 					cursor.execute(mquery(year, cat_ensino, tit))
 					fetched_data = cursor.fetchall()[0][0]
-					yield year, fetched_data
+					yield [fetched_data]
 				
 				print
 
@@ -443,7 +443,7 @@ class TableGenerator(object):
 					"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Estadual": "Estadual",
 					"Pessoa Jur\xc3\xaddica de Direito P\xc3\xbablico - Federal": "Federal"
 				})
-				yield [year]+[e[0] for e in fetched_data]
+				yield [e[0] for e in fetched_data]
 			
 			print color("last fetched: %s" %  fetched_data, 'NICEBLUE'), '\n'
 
@@ -493,7 +493,7 @@ class TableGenerator(object):
 				fetched_data += filter(cursor.fetchall(), {
 					'Universidade': 'UTF'
 				}, autofill='0')
-				yield [year] + [e[0] for e in fetched_data]
+				yield [e[0] for e in fetched_data]
 				
 			print color("last fetched: %s" %  fetched_data, 'NICEBLUE'), '\n'
 
@@ -523,7 +523,7 @@ class TableGenerator(object):
 					u'N\xe3o aplica': 'Não aplica',
 					u'Integral': 'Integral',
 				}, autofill='0')
-				yield [year] + fetched_data
+				yield [e[0] for e in fetched_data]
 
 			print color("last fetched: %s" %  fetched_data, 'NICEBLUE'), '\n'
 
@@ -553,7 +553,7 @@ class TableGenerator(object):
 					u'N\xe3o aplica': 'Não aplica',
 					u'Integral': 'Integral',
 				}, autofill='0')
-				yield [year] + fetched_data
+				yield [e[0] for e in fetched_data]
 
 			print color("last fetched: %s" %  fetched_data, 'NICEBLUE'), '\n'
 
@@ -584,10 +584,10 @@ class TableGenerator(object):
 						u'Vespertino':'Vespertino',
 						u'Matutino': 'Matutino',
 						u'Noturno': 'Noturno',
-						u'N\xe3o aplica': 'Nao se aplica?',
+						u'N\xe3o aplica': 'Não aplica',
 						u'Integral': 'Integral',
 					}, autofill='0')
-					yield [year] + fetched_data
+					yield [e[0] for e in fetched_data]
 
 				print color("last fetched: %s" %  fetched_data, 'NICEBLUE'), '\n'
 
@@ -598,49 +598,57 @@ class TableGenerator(object):
 		cursor = self.cursor
 
 		# mquery pega os dados para IFETs e CEFETs
-		mquery = lambda ano, tit: QueryAssembler(
+		mquery = lambda ano, tit, mod: QueryAssembler(
 			year=ano,
 			select=['qtde_de_cursos', "org_acad", 'vagas_turno'],
-			where=['existia_no_ano', 'educação_presencial', tit],
+			where=['existia_no_ano', mod, tit],
 			order_by=["org_acad"], group_by=["org_acad", 'vagas_turno']).query
 
 		# mquery2 cria query específica para Universidades Federais (UFs)
-		mquery2 = lambda ano, tit: QueryAssembler(
+		mquery2 = lambda ano, tit, mod: QueryAssembler(
 			year=ano,
 			select=['qtde_de_cursos', "org_acad", 'vagas_turno'],
-			where=['existia_no_ano', 'UF', 'educação_presencial', tit],
+			where=['existia_no_ano', 'UF', mod, tit],
 			group_by=["org_acad", 'vagas_turno']).query
 		
 		# mquery3 cria query específica para UTFs
-		mquery3 = lambda ano, tit: QueryAssembler(
+		mquery3 = lambda ano, tit, mod: QueryAssembler(
 			year=ano,
 			select=['qtde_de_cursos', "org_acad", 'vagas_turno'],
-			where=['existia_no_ano', 'UTF', 'educação_presencial', tit],
+			where=['existia_no_ano', 'UTF', mod, tit],
 			group_by=["org_acad", 'vagas_turno']).query
 
 		for tit in TITULACAO:
 
-			for nat_jur_pub in NAT_JURIDICA_PUBLICA:
+			for mod in MOD_ENSINO:
+				print color('$ modalidade: %s' % mod, 'OKBLUE')
 				print color("$ titulação: %s" % tit, 'OKBLUE')
-				print color("$ natureza jurídica pública: %s" % nat_jur_pub, 'OKBLUE')
 
-				for year in ANOS_FHC+ANOS_LULA:
-					fetched_data = []
-					cursor.execute(mquery(year, tit))
-					fetched_data += filter(cursor.fetchall(), {
-						"Centro Federal de Educa\xc3\xa7\xc3\xa3o Tecnol\xc3\xb3gica": "CEFET",
-						"Instituto Federal de Educa\xc3\xa7\xc3\xa3o, Ci\xc3\xaancia e Tecnologia": "IFET",
-					}, autofill='0')
+				if (mod == 'educação_presencial' and tit == 'bacharelado'):
+					continue
 
-					cursor.execute(mquery2(year, tit))
-					fetched_data += filter(cursor.fetchall(), { 'Universidade': 'UF' }, autofill='0')
-					cursor.execute(mquery3(year, tit))
-					fetched_data += filter(cursor.fetchall(), { 'Universidade': 'UTF' }, autofill='0')
+				for k in ('UTF', 'CEFET', 'UF', 'IFET'):
+					print k
 
-					# reorganize tuples to parse_turno() style
-					fetched_data = [(a, str(c), str(b)) for (a, b, c) in fetched_data]
-					fetched_data = parse_turno(fetched_data)
+					for year in ANOS_FHC+ANOS_LULA:
+						fetched_data = []
+						cursor.execute(mquery(year, tit, mod))
+						fetched_data += filter(cursor.fetchall(), {
+							"Centro Federal de Educa\xc3\xa7\xc3\xa3o Tecnol\xc3\xb3gica": "CEFET",
+							"Instituto Federal de Educa\xc3\xa7\xc3\xa3o, Ci\xc3\xaancia e Tecnologia": "IFET",
+						}, autofill='0', row_size=3)
 
-					yield [year] + fetched_data.items()
-					
-				print color("last fetched: %s" %  fetched_data, 'NICEBLUE'), '\n'
+						cursor.execute(mquery2(year, tit, mod))
+						fetched_data += filter(cursor.fetchall(), { 'Universidade': 'UF' }, autofill='0', row_size=3)
+						cursor.execute(mquery3(year, tit, mod))
+						fetched_data += filter(cursor.fetchall(), { 'Universidade': 'UTF' }, autofill='0', row_size=3)
+
+						# reorganize tuples to parse_turno() style
+						fetched_data = [(a, str(c), str(b)) for (a, b, c) in fetched_data]
+						fetched_data = parse_turno(fetched_data)
+
+						yield [fetched_data[k]]
+
+						# yield fetched_data.items()
+							
+					print color("last fetched: %s" %  fetched_data, 'NICEBLUE'), '\n'

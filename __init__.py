@@ -49,7 +49,6 @@ if __name__ == "__main__":
 
     tg = TableGenerator(cursor)
     
+    # get from command line arguments
     for i in range(1, len(sys.argv)):
         display_data(getattr(tg, 'table%s' % sys.argv[i])())
-    display_data(tg.table5_6())
-    
