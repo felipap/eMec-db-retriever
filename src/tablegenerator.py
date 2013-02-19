@@ -163,8 +163,8 @@ class TableGenerator(object):
 					cursor.execute(mquery(year, cat_ensino, mod_ensino))
 					fetched_data = [e[0] for e in cursor.fetchall()]
 					yield [year] + fetched_data
-				
 				print 
+
 
 	def table2(self):
 		"""
@@ -593,7 +593,7 @@ class TableGenerator(object):
 
 	def table15(self):
 		"""
-		gerando 15ª tabela. Licenciatura e bacharelado presenciais, segundo a natureza jurídica público (federal, estadual e municipal) e o número de vagas por turno.
+		gerando 15ª tabela. Licenciatura e bacharelado presenciais, segundo a instituição (UTF, CEFET, UF, IFET) e o número de vagas por turno.
 		"""
 		cursor = self.cursor
 
@@ -618,8 +618,8 @@ class TableGenerator(object):
 			where=['existia_no_ano', 'UTF', mod, tit],
 			group_by=["org_acad", 'vagas_turno']).query
 
+		count = 0
 		for tit in TITULACAO:
-
 			for mod in MOD_ENSINO:
 				print color('$ modalidade: %s' % mod, 'OKBLUE')
 				print color("$ titulação: %s" % tit, 'OKBLUE')
@@ -638,6 +638,7 @@ class TableGenerator(object):
 							"Instituto Federal de Educa\xc3\xa7\xc3\xa3o, Ci\xc3\xaancia e Tecnologia": "IFET",
 						}, autofill='0', row_size=3)
 
+						count += 1
 						cursor.execute(mquery2(year, tit, mod))
 						fetched_data += filter(cursor.fetchall(), { 'Universidade': 'UF' }, autofill='0', row_size=3)
 						cursor.execute(mquery3(year, tit, mod))
@@ -650,5 +651,6 @@ class TableGenerator(object):
 						yield [fetched_data[k]]
 
 						# yield fetched_data.items()
-							
 					print color("last fetched: %s" %  fetched_data, 'NICEBLUE'), '\n'
+					print mquery(year, tit, mod)	
+		print count
